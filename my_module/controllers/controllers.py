@@ -5,7 +5,7 @@ from odoo.http import request, Response
 
 
 class MyModule(http.Controller):
-     @http.route('/api/test', auth='public', methods=['GET'])
+     @http.route('/api/test', auth='public', website="True")
      def index(self, **kw):
          return "Hello, world"
 
@@ -23,6 +23,6 @@ class MyModule(http.Controller):
          })
 
 class ExampleOdooRequest(http.Controller):
-    @http.route('/api/list_event', auth='public', methods=['GET'])
+    @http.route('/api/list_event', type='json' auth='public', methods=['GET'])
     def get_list_event(self):
         return "Succeed"
