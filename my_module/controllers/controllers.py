@@ -23,7 +23,7 @@ class MyModule(http.Controller):
          })
 
 class ExampleOdooRequest(http.Controller):
-    @http.route('/api/partner', type='json', auth='user', methods=['GET'])
+    @http.route('/api/partner', type='json', auth='public', methods=['GET'])
     def get_list_event(self, id):
         sales_rec = request.env['res.partner'].search([])
         sales = []
@@ -37,7 +37,7 @@ class ExampleOdooRequest(http.Controller):
         data = {'status': 200, 'response': sales, 'message': 'Succeed'}
         return data
     
-    @http.route('/api/createpartner', type='json', auth='user', methods=['POST'])
+    @http.route('/api/createpartner', type='json', auth='public', methods=['POST'])
     def get_list_event(self, customer):
         
         for rec in customer:
