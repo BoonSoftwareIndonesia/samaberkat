@@ -23,6 +23,29 @@ class MyModule(http.Controller):
          })
 
 class ExampleOdooRequest(http.Controller):
-    @http.route('/api/list_event', type='json' auth='public', methods=['GET'])
-    def get_list_event(self):
-        return "Succeed"
+    @http.route('/api/partner', type='json', auth='user', methods=['GET'])
+    def get_list_event(self, id):
+        sales_rec = request.env['res.partner'].search([])
+        sales = []
+        for rec in sales_rec:
+            vals = {
+                'id': rec.id,
+                'name': rec.name,
+            }
+            if rec.id == id:
+                sales.append(vals)
+        data = {'status': 200, 'response': sales, 'message': 'Succeed'}
+        return data
+    
+    @http.route('/api/createpartner', type='json', auth='user', methods=['POST'])
+    def get_list_event(self, customer):
+        
+        for rec in customer:
+            self.env['res.partner'].create({
+                "name": rec["name"]
+            })
+        
+        
+        
+        message = {'status': 200, 'response': cust, 'message': 'Succeed'}
+        return message
