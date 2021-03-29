@@ -24,7 +24,7 @@ class MyModule(http.Controller):
 
 class ExampleOdooRequest(http.Controller):
     @http.route('/api/partner', type='json', auth='public', methods=['GET'])
-    def get_list_event(self, id):
+    def get_partner(self, id):
         sales_rec = request.env['res.partner'].search([])
         sales = []
         for rec in sales_rec:
@@ -37,15 +37,50 @@ class ExampleOdooRequest(http.Controller):
         data = {'status': 200, 'response': sales, 'message': 'Succeed'}
         return data
     
-    @http.route('/api/createpartner', type='json', auth='public', methods=['POST'])
-    def get_list_event(self, customer):
+    @http.route('/api/createpartner', type='json', auth='user', methods=['POST'])
+    def post_partner(self, customer):
         
         for rec in customer:
-            self.env['res.partner'].create({
-                "name": rec["name"]
-            })
-        
-        
+            cust = request.env['res.partner'].create(rec)
         
         message = {'status': 200, 'response': cust, 'message': 'Succeed'}
+        return message
+    
+    @http.route('/api/createbill', type='json', auth='user', methods=['POST'])
+    def post_bill(self, bill):
+        
+        for rec in bill:
+            result = request.env['account.move'].create(rec)
+        
+        message = {'status': 200, 'response': result, 'message': 'Succeed'}
+        return message
+    
+    @http.route('/api/createbill2', type='json', auth='user', methods=['POST'])
+    def post_bill_two(self, bill):
+        products = request.env['product.product'].search([])
+        partners = request.env['res.partner'].search([])
+        temp_partner = 0
+        
+        for rec in bill:
+            
+            for line in rec["invoice_line_ids"]:
+                for product in products:
+                    if product["default_code"] == line["product_id"]:
+                        line["product_id"] = product["id"]
+            
+            for partner in partners:
+                if partner["name"] == rec["partner_id"]:
+                    temp_partner = partner["id"]
+                
+            result = request.env['account.move'].create({
+                "move_type": "in_invoice",
+                "partner_id": temp_partner,
+                "invoice_date": rec["invoice_date"],
+                "date": rec["date"],
+                "invoice_payment_term_id": rec["invoice_payment_term_id"],
+                "journal_id": 2,
+                "invoice_line_ids": rec["invoice_line_ids"]
+            })
+        
+        message = {'status': 200, 'response': result, 'message': 'Succeed'}
         return message
