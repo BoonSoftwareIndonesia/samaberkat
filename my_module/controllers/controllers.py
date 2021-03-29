@@ -23,6 +23,6 @@ class MyModule(http.Controller):
          })
 
 class ExampleOdooRequest(http.Controller):
-    @http.route('/api/list_event', type='json' auth='public', methods=['GET'])
+    @http.route('/api/list_event', type='json', auth='public', methods=['GET'])
     def get_list_event(self):
         return "Succeed"
