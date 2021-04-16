@@ -13,6 +13,7 @@
             </xpath>
         </field>
     </record>
+
     <!-- 
         Edit Date: 14/04/21
         Edit By: Wilson
@@ -41,7 +42,7 @@
     -->
       
       
-      
+
     <!-- explicit list view definition -->
 <!--
     <record model="ir.ui.view" id="installment.list">

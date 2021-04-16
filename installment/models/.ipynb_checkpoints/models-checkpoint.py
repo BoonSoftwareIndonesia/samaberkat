@@ -56,4 +56,4 @@ class installment(models.Model):
 class payment_term(models.Model):
     _inherit = 'account.payment.term'
     
-    x_is_installment = fields.Boolean(string='Installment')
+    x_is_installment = fields.Boolean(string='Installment'
