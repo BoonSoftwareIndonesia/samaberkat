@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Installment",
+    'name': "installment",
 
     'summary': "Additional payment function for installment",
 

@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Installment",
+    'name': "installment",
 
-    'summary': "Additional payment function for installment",
+    'summary': """
+        Short (1 phrase/line) summary of the module's purpose, used as
+        subtitle on modules listing or apps.openerp.com""",
 
-    'description': "Additional payment function for installment",
+    'description': """
+        Long description of module's purpose
+    """,
 
-    'author': "Boon Software",
-    'website': "http://www.boonsoftware.com",
+    'author': "My Company",
+    'website': "http://www.yourcompany.com",
 
     # Categories can be used to filter modules in modules listing
     # Check https://github.com/odoo/odoo/blob/14.0/odoo/addons/base/data/ir_module_category_data.xml
@@ -16,7 +20,7 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'account_accountant'],
+    'depends': ['base'],
 
     # always loaded
     'data': [
