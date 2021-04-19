@@ -52,3 +52,9 @@ class installment(models.Model):
 #     def _value_pc(self):
 #         for record in self:
 #             record.value2 = float(record.value) / 100
+
+
+class payment_term(models.Model):
+    _inherit = 'account.payment.term'
+    
+    x_is_installment = fields.Boolean(string='Installment')
