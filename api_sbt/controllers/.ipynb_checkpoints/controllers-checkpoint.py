@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json, datetime
+from datetime import datetime
 from odoo import http
 from odoo.http import request, Response
 
@@ -47,6 +48,14 @@ class ApiSbt(http.Controller):
             Response.status = "401"
             return {'response': "Failed to create invoice!", 'message': {"Error":"Failed to authenticate user"}}
         
+        #Create log
+        api_log = request.env['api_sbt.api_sbt'].create({
+            'status': 'new',
+            'created_date': datetime.now(),
+            'incoming_msg': ap
+        })
+        
+        api_log['status'] = 'process'
         
         for rec in ap:
             temp_state = 0
@@ -124,6 +133,7 @@ class ApiSbt(http.Controller):
             
             if is_error == True:
                 Response.status = "400"
+                api_log['status'] = 'error'
                 break
             
             #Bill Line
@@ -195,8 +205,8 @@ class ApiSbt(http.Controller):
                     break
                 
                 try:
-                    order_date = datetime.datetime.strptime(line['omsOrderDate'], '%d/%m/%Y')
-                except:
+                    order_date = datetime.strptime(line['omsOrderDate'], '%d/%m/%Y')
+                except ValueError:
                     error["Error"] = "Wrong date format on omsOrderDate"
                     is_error = True
                     break
@@ -220,32 +230,33 @@ class ApiSbt(http.Controller):
             
             if is_error == True:
                 Response.status = "400"
+                api_log['status'] = 'error'
                 break
             
             try:
-                payment_date = datetime.datetime.strptime(rec["omsPaymentDate"], '%d/%m/%Y')
-            except:
+                payment_date = datetime.strptime(rec["omsPaymentDate"], '%d/%m/%Y')
+            except ValueError:
                 error["Error"] = "Wrong date format on omsPaymentDate"
                 is_error = True
                 break
             
             try:
-                invoice_date = datetime.datetime.strptime(rec["omsPayOpdate1"], '%d/%m/%Y')
-            except:
+                invoice_date = datetime.strptime(rec["omsPayOpdate1"], '%d/%m/%Y')
+            except ValueError:
                 error["Error"] = "Wrong date format on omsPayOpdate1"
                 is_error = True
                 break
             
             try:
-                bill_date = datetime.datetime.strptime(rec["omsPayOpdate2"], '%d/%m/%Y')
-            except:
+                bill_date = datetime.strptime(rec["omsPayOpdate2"], '%d/%m/%Y')
+            except ValueError:
                 error["Error"] = "Wrong date format on omsPayOpdate2"
                 is_error = True
                 break
             
             try:
-                due_date = datetime.datetime.strptime(rec["dueDate"], '%d/%m/%Y')
-            except:
+                due_date = datetime.strptime(rec["dueDate"], '%d/%m/%Y')
+            except ValueError:
                 error["Error"] = "Wrong date format on dueDate"
                 is_error = True
                 break
@@ -272,11 +283,17 @@ class ApiSbt(http.Controller):
             
         if is_error == True:
             Response.status = "400"
+            api_log['status'] = 'error'
+        else:
+            api_log['status'] = 'success'
         
         message = {
             'response': response_msg, 
             'message': error
         }
+        
+        api_log['response_msg'] = message
+        api_log['response_date'] = datetime.now()
         
         return message
 
@@ -439,8 +456,8 @@ class ApiSbt(http.Controller):
                     break
                 
                 try:
-                    order_date = datetime.datetime.strptime(line['omsOrderDate'], '%d/%m/%Y')
-                except:
+                    order_date = datetime.strptime(line['omsOrderDate'], '%d/%m/%Y')
+                except ValueError:
                     error["Error"] = "Wrong date format on omsOrderDate"
                     is_error = True
                     break
@@ -467,15 +484,15 @@ class ApiSbt(http.Controller):
                 break
             
             try:
-                invoice_date = datetime.datetime.strptime(rec["invoiceDate"], '%d/%m/%Y')
-            except:
+                invoice_date = datetime.strptime(rec["invoiceDate"], '%d/%m/%Y')
+            except ValueError:
                 error["Error"] = "Wrong date format on invoiceDate"
                 is_error = True
                 break
             
             try:
-                due_date = datetime.datetime.strptime(rec["dueDate"], '%d/%m/%Y')
-            except:
+                due_date = datetime.strptime(rec["dueDate"], '%d/%m/%Y')
+            except ValueError:
                 error["Error"] = "Wrong date format on dueDate"
                 is_error = True
                 break
