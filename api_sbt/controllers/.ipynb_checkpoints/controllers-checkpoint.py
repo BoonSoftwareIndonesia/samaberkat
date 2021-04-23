@@ -30,8 +30,8 @@ class ApiSbt(http.Controller):
         else:
             return -1
 
-    @http.route('/api/createap', type='json', auth='none', methods=['POST'])
-    def post_ap(self, db, login, password, ap):
+    @http.route('/api/createap', type='json', auth='user', methods=['POST'])
+    def post_ap(self, ap):
         created = 0
         error = {}
         warn_cnt = 1
@@ -41,18 +41,12 @@ class ApiSbt(http.Controller):
         response_msg = "Failed to create bill!"
         message = {}
         
-        #Authenticate Session
-        try:
-            request.session.authenticate(db, login, password)
-        except:
-            Response.status = "401"
-            return {'response': "Failed to create invoice!", 'message': {"Error":"Failed to authenticate user"}}
-        
         #Create log
         api_log = request.env['api_sbt.api_sbt'].create({
             'status': 'new',
             'created_date': datetime.now(),
-            'incoming_msg': ap
+            'incoming_msg': ap,
+            'message_type': 'ap'
         })
         
         api_log['status'] = 'process'
@@ -297,15 +291,8 @@ class ApiSbt(http.Controller):
         
         return message
 
-    @http.route('/api/createar', type='json', auth='none', methods=['POST'])
-    def post_ar(self, db, login, password, ar):
-        #Authenticate Session
-        try:
-            request.session.authenticate(db, login, password)
-        except:
-            Response.status = "401"
-            return {'response': "Failed to create invoice!", 'message': {"Error":"Failed to authenticate user"}}
-        
+    @http.route('/api/createar', type='json', auth='user', methods=['POST'])
+    def post_ar(self, ar):
         created = 0
         error = {}
         warn_cnt = 1

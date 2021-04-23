@@ -13,6 +13,7 @@ class api_sbt(models.Model):
     status = fields.Selection([('new','New'),('process','Processing'),('success','Success'),('error','Error')])
     created_date = fields.Datetime(string="Created Date")
     response_date = fields.Datetime(string="Response Date")
+    message_type = fields.Selection([('ar','CRT_AR'),('ap','CRT_AP')])
     
     @api.model
     def create(self, vals):
