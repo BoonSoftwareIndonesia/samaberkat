@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "api_sbt",
+    'name': "API SBT",
 
     'summary': "Custom API for AP/AR",
 
@@ -20,7 +20,7 @@
 
     # always loaded
     'data': [
-        # 'security/ir.model.access.csv',
+        'security/ir.model.access.csv',
         'views/views.xml',
         'views/templates.xml',
     ],

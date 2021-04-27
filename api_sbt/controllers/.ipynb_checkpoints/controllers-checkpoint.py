@@ -22,59 +22,109 @@ class ApiSbt(http.Controller):
 #             'object': obj
 #         })
 
-class BoonApiRequest(http.Controller):
-    @http.route('/api/partner', type='json', auth='public', methods=['GET'])
-    def get_partner(self, id):
-        sales_rec = request.env['res.partner'].search([])
-        sales = []
-        for rec in sales_rec:
-            vals = {
-                'id': rec.id,
-                'name': rec.name,
-            }
-            if rec.id == id:
-                sales.append(vals)
-        data = {'status': 200, 'response': sales, 'message': 'Succeed'}
-        return data
+    def getRecord(self, model, field, oms):
+        record = request.env[model].search([(field,'=',oms)])
+        if record[field] == oms:
+            return record['id']
+        else:
+            return -1
+    
+    @http.route('/api/authenticate', type='json', auth='none', methods=['POST'])
+    def authenticate(self, db, login, password):
+        try:
+            request.session.authenticate(db, login, password)
+            return request.env['ir.http'].session_info()
+        except:
+            Response.status = "401"
+            return {"Error": "Failed to authenticate user"}
 
-    @http.route('/api/createap', type='json', auth='none', methods=['POST'])
-    def post_ap(self, db, login, password, ap):
-        #Authenticate Session
-        request.session.authenticate(db, login, password)
-        
+    @http.route('/api/createap', type='json', auth='user', methods=['POST'])
+    def post_ap(self, ap):
         created = 0
         error = {}
-        error_cnt = 1
+        warn_cnt = 1
         bill_lines = []
         temp_vendor = 0
+        is_error = False
+        response_msg = "Failed to create bill!"
+        message = {}
         
         for rec in ap:
+            temp_state = 0
+            temp_country = 0
+            temp_term = 0
+            
+            #Check omsPaymentNo
+            bill = request.env['account.move'].search([('x_payment_no', '=', rec['omsPaymentNo']),('move_type', '=', 'in_invoice')])
+            if bill['x_payment_no'] == rec['omsPaymentNo'] and bill['state'] == 'posted':
+                error["Error"] = "Document " + rec['omsPaymentNo'] + " has been posted"
+                is_error = True
+                break
             
             #Vendor
-            partner = request.env['res.partner'].search([('x_studio_subcon_code', '=', rec['subconCode'])])
-            if partner['x_studio_subcon_code'] == rec['subconCode']:
-                temp_vendor = partner['id']
-            else:
-                request.env['res.partner'].create({
+            if rec['subconCode'] == "":
+                error["Error"] = "Field subconCode is blank"
+                is_error = True
+                break
+            
+            temp_vendor = self.getRecord(model="res.partner", field="x_studio_subcon_code", oms=rec['subconCode'])
+            if temp_vendor == -1:
+                #Check if subconName is blank
+                if rec['subconName'] == "":
+                    error["Error"] = "Field subconName is blank"
+                    is_error = True
+                    break
+                
+                #State
+                oms_state = str(rec['subconStateName']).title()
+                temp_state = self.getRecord(model="res.country.state", field="name", oms=oms_state)
+                if temp_state == -1:
+                    error["Error"] = "State " + rec['subconStateName'] + " does not exist"
+                    is_error = True
+                    break
+                        
+                #Country
+                oms_country = str(rec['subconCountry']).title()
+                temp_country = self.getRecord(model="res.country", field="name", oms=oms_country)
+                if temp_country == -1:
+                    error["Error"] = "Country " + rec['subconCountry'] + " does not exist"
+                    is_error = True
+                    break
+                    
+                #Payment Term
+                temp_term = self.getRecord(model="account.payment.term", field="x_studio_oms_term_code", oms=rec['subconPaymentTerm'])
+                if temp_term == -1:
+                    error["Error"] = "Payment Term  " + rec['subconPaymentTerm'] + " does not exist"
+                    is_error = True
+                    break
+                
+                created_vendor = request.env['res.partner'].create({
                     "x_studio_subcon_code": rec['subconCode'],
                     "name": rec['subconName'],
                     "street": rec['subconAddress'],
                     "city": rec['subconCity'],
-                    #"state_id": rec['subconState'],
+                    "state_id": temp_state,
                     "zip": rec['subconZipCode'],
-                    #"country_id": rec['subconCountry'],
+                    "country_id": temp_country,
                     "mobile": rec['subconMobileNo'],
                     "email": rec['subconEmail'],
-                    #"property_supplier_payment_term_id": rec['subconPaymentTerm']
+                    "property_supplier_payment_term_id": temp_term,
                     "is_company": 'TRUE',
-                    "supplier_rank": 1
+                    "supplier_rank": 1,
+                    "property_account_receivable_id": 558,
+                    "property_account_payable_id": 606,
+                    "x_studio_account_number": rec['subconRemarks']
                 })
                 
-                err_cnt = "Error " + str(error_cnt)
-                error[err_cnt] = "Vendor  " + rec['subconCode'] + " has been created"
-                error_cnt += 1
+                warn_str = "Message " + str(warn_cnt)
+                error[warn_str] = "Vendor " + rec['subconCode'] + " has been created"
+                warn_cnt += 1
                 
-                temp_vendor = request.env['res.partner'].search([('x_studio_subcon_code', '=', rec['subconCode'])]).id
+                temp_vendor = created_vendor['id']
+            
+            if is_error == True:
+                Response.status = "400"
+                break
             
             #Bill Line
             for line in rec['apLine']:
@@ -83,27 +133,42 @@ class BoonApiRequest(http.Controller):
                 temp_tax = []
                 
                 #product
-                product = request.env['product.product'].search([('default_code', '=', line['paymentChargeCode'])])
-                if product['default_code'] == line['paymentChargeCode']:
-                    temp_product = product['id']
-                else:
-                    request.env['product.product'].create({
+                if line['paymentChargeCode'] == "":
+                    error["Error"] = "Field paymentChargeCode is blank"
+                    is_error = True
+                    break
+                
+                temp_product = self.getRecord(model="product.product", field="default_code", oms=line['paymentChargeCode'])
+                if temp_product == -1:
+                    #Check paymentChargeCodeDesc
+                    if line['paymentChargeCodeDesc'] == "":
+                        error["Error"] = "Field paymentChargeCodeDesc is blank"
+                        is_error = True
+                        break
+                    
+                    created_product = request.env['product.product'].create({
                         "default_code": line['paymentChargeCode'],
-                        "name": line['paymentChargeCodeDesc']
+                        "name": line['paymentChargeCodeDesc'],
+                        "property_account_income_id": line['glCode'],
+                        "property_account_expense_id": line['glCode']
                     })
                     
-                    err_cnt = "Error " + str(error_cnt)
-                    error[err_cnt] = "Product  " + line['paymentChargeCode'] + " has been created"
-                    error_cnt += 1
+                    temp_product = created_product['id']
+                    
+                    warn_str = "Message " + str(warn_cnt)
+                    error[warn_str] = "Product " + line['paymentChargeCode'] + " has been created"
+                    warn_cnt += 1
                 
                 #G/L Account
-                account = request.env['account.account'].search([('code', '=', line['glCode'])])
-                if account['code'] == line['glCode']:
-                    temp_account = account['id']
-                else:
-                    err_cnt = "Error " + str(error_cnt)
-                    error[err_cnt] = "Account  " + line['glCode'] + " not found"
-                    error_cnt += 1
+                if line['glCode'] == "":
+                    error["Error"] = "Field glCode is blank"
+                    is_error = True
+                    break
+                
+                temp_account = self.getRecord(model="account.account", field="code", oms=line['glCode'])
+                if temp_account == -1:
+                    error["Error"] = "Account " + line['glCode'] + " does not exist"
+                    is_error = True
                     break
                 
                 #Tax
@@ -112,14 +177,34 @@ class BoonApiRequest(http.Controller):
                 if tax['amount'] == tx:
                     temp_tax.append(tax['id'])
                 else:
-                    err_cnt = "Error " + str(error_cnt)
-                    error[err_cnt] = "Tax  " + line['paymentTaxRate'] + " not found"
-                    error_cnt += 1
+                    error["Error"] = "Tax " + line['paymentTaxRate'] + " does not exist"
+                    is_error = True
+                    break
+                    
+                #Check paymentQty
+                if line['paymentQty'] == "":
+                    error["Error"] = "Field paymentQty is blank"
+                    is_error = True
+                    break
+                    
+                #Check paymentRate
+                if line['paymentRate'] == "":
+                    error["Error"] = "Field paymentRate is blank"
+                    is_error = True
                     break
                 
-                order_date = datetime.datetime.strptime(line['omsOrderDate'], '%d/%m/%Y')
+                if line['omsOrderDate'] == "":
+                    order_date = ""
+                else:
+                    try:
+                        order_date = datetime.datetime.strptime(line['omsOrderDate'], '%d/%m/%Y').date()
+                    except ValueError:
+                        error["Error"] = "Wrong date format on omsOrderDate"
+                        is_error = True
+                        break
                 
                 bill_line = {}
+                bill_line['x_line_number'] = line['payLineNo']
                 bill_line['product_id'] = temp_product
                 bill_line['account_id'] = temp_account
                 bill_line['quantity'] = line['paymentQty']
@@ -128,30 +213,314 @@ class BoonApiRequest(http.Controller):
                 bill_line['x_remarks'] = line['paymentRemarks']
                 bill_line['x_no_ot'] = line['omsReference']
                 bill_line['x_destination'] = line['uocCode']
-                bill_line['x_payment_no'] = line['omsPaymentNo']
                 bill_line['x_order_no'] = line['omsOrderNo']
-                bill_line['x_order_date'] = order_date.date()
+                bill_line['x_order_date'] = order_date
                 bill_line['x_driver_first_name'] = line['driverFirstName']
                 bill_line['x_vehicle_number'] = line['vehicleId']
                 
                 bill_lines.append(bill_line)
-               
-            payment_date = datetime.datetime.strptime(rec["omsPaymentDate"], '%d/%m/%Y')
-            invoice_date = datetime.datetime.strptime(rec["omsPayOpdate1"], '%d/%m/%Y')
-            bill_date = datetime.datetime.strptime(rec["omsPayOpdate2"], '%d/%m/%Y')
-            due_date = datetime.datetime.strptime(rec["dueDate"], '%d/%m/%Y')
+            
+            if is_error == True:
+                Response.status = "400"
+                break
+            
+            if rec["omsPaymentDate"] == "":
+                payment_date = ""
+            else:
+                try:
+                    payment_date = datetime.datetime.strptime(rec["omsPaymentDate"], '%d/%m/%Y').date()
+                except ValueError:
+                    error["Error"] = "Wrong date format on omsPaymentDate"
+                    is_error = True
+                    break
+            
+            if rec["omsPayOpdate1"] == "":
+                invoice_date = ""
+            else:
+                try:
+                    invoice_date = datetime.datetime.strptime(rec["omsPayOpdate1"], '%d/%m/%Y').date()
+                except ValueError:
+                    error["Error"] = "Wrong date format on omsPayOpdate1"
+                    is_error = True
+                    break
+            
+            if rec["omsPayOpdate2"] == "":
+                bill_date = ""
+            else:
+                try:
+                    bill_date = datetime.datetime.strptime(rec["omsPayOpdate2"], '%d/%m/%Y').date()
+                except ValueError:
+                    error["Error"] = "Wrong date format on omsPayOpdate2"
+                    is_error = True
+                    break
+            
+            if rec["dueDate"] == "":
+                due_date = ""
+            else:
+                try:
+                    due_date = datetime.datetime.strptime(rec["dueDate"], '%d/%m/%Y').date()
+                except ValueError:
+                    error["Error"] = "Wrong date format on dueDate"
+                    is_error = True
+                    break
+            
+            #If previous record exist, delete it first before creating the new record
+            if bill['x_payment_no'] == rec['omsPaymentNo'] and bill['state'] == 'draft':
+                bill.unlink()
             
             result = request.env['account.move'].create({
                 "move_type": "in_invoice",
                 "journal_id": 2,
+                "x_payment_no": rec['omsPaymentNo'],
                 "partner_id": temp_vendor,
-                "x_payment_date": payment_date.date(),
-                "date": invoice_date.date(),
-                "invoice_date": bill_date.date(),
-                "invoice_date_due": due_date.date(),
+                "x_payment_date": payment_date,
+                "date": invoice_date,
+                "invoice_date": bill_date,
+                "invoice_date_due": due_date,
                 "invoice_line_ids": bill_lines
             })
             created += 1
+            
+            response_msg = "Bill created successfully, ID: " + str(result['id'])
+            
+        if is_error == True:
+            Response.status = "400"
+        else:
+            Response.status = "200"
         
-        message = {'status': 200, 'response': result, 'error': error, 'message': str(created) + ' record(s) created successfully'}
+        message = {
+            'response': response_msg, 
+            'message': error
+        }
+        
+        return message
+
+    @http.route('/api/createar', type='json', auth='user', methods=['POST'])
+    def post_ar(self, ar):
+        created = 0
+        error = {}
+        warn_cnt = 1
+        inv_lines = []
+        temp_cust = 0
+        is_error = False
+        response_msg = "Failed to create invoice!"
+        
+        for rec in ar:
+            temp_state = 0
+            temp_country = 0
+            
+            #Check invoiceNo
+            inv = request.env['account.move'].search([('x_oms_invoice_no', '=', rec['invoiceNo']),('move_type', '=', 'out_invoice')])
+            if inv['x_oms_invoice_no'] == rec['invoiceNo'] and inv['state'] == 'posted':
+                error["Error"] = "Document " + rec['invoiceNo'] + " has been posted"
+                is_error = True
+                break
+            
+            #Customer
+            if rec['ownerCode'] == "":
+                error["Error"] = "Field ownerCode is blank"
+                is_error = True
+                break
+                
+            temp_cust = self.getRecord(model="res.partner", field="x_studio_owner_code", oms=rec['ownerCode'])
+            if temp_cust == -1:
+                #Check ownerName
+                if rec['ownerName'] == "":
+                    error["Error"] = "Field ownerName is blank"
+                    is_error = True
+                    break
+                
+                #State
+                oms_state = str(rec['ownerStateName']).title()
+                temp_state = self.getRecord(model="res.country.state", field="name", oms=oms_state)
+                if temp_state == -1:
+                    error["Error"] = "State " + rec['ownerStateName'] + " does not exist"
+                    is_error = True
+                    break
+                    
+                #Country
+                oms_country = str(rec['ownerCountry']).title()
+                temp_country = self.getRecord(model="res.country", field="name", oms=oms_country)
+                if temp_country == -1:
+                    error["Error"] = "Country " + rec['ownerCountry'] + " does not exist"
+                    is_error = True
+                    break
+                    
+                #Payment Term
+                temp_term = self.getRecord(model="account.payment.term", field="x_studio_oms_term_code", oms=rec['ownerTermCode'])
+                if temp_term == -1:
+                    error["Error"] = "Payment Term  " + rec['ownerTermCode'] + " does not exist"
+                    is_error = True
+                    break
+                
+                created_cust = request.env['res.partner'].create({
+                    "x_studio_owner_code": rec['ownerCode'],
+                    "name": rec['ownerName'],
+                    "street": rec['ownerAddress1'],
+                    "city": rec['ownerCity'],
+                    "state_id": temp_state,
+                    "zip": rec['ownerZipCode'],
+                    "country_id": temp_country,
+                    "mobile": rec['ownerMobileNo1'],
+                    "email": rec['ownerEmail1'],
+                    "property_payment_term_id": temp_term,
+                    "is_company": 'TRUE',
+                    "customer_rank": 1,
+                    "property_account_receivable_id": 558,
+                    "property_account_payable_id": 606
+                })
+                
+                warn_str = "Message " + str(warn_cnt)
+                error[warn_str] = "Customer " + rec['ownerCode'] + " has been created"
+                warn_cnt += 1
+                
+                temp_cust = created_cust['id']
+                
+            if is_error == True:
+                Response.status = "400"
+                break
+                
+            for line in rec['arLine']:
+                temp_product = 0
+                temp_account = 0
+                temp_tax = []
+
+                #product
+                if line['billingChargeCode'] == "":
+                    error["Error"] = "Field billingChargeCode is blank"
+                    is_error = True
+                    break
+                
+                temp_product = self.getRecord(model="product.product", field="default_code", oms=line['billingChargeCode'])
+                if temp_product == -1:
+                    #Check billingChargeCodeDesc
+                    if line['billingChargeCodeDesc'] == "":
+                        error["Error"] = "Field billingChargeCodeDesc is blank"
+                        is_error = True
+                        break
+                    
+                    created_product = request.env['product.product'].create({
+                        "default_code": line['billingChargeCode'],
+                        "name": line['billingChargeCodeDesc'],
+                        "property_account_income_id": line['glCode'],
+                        "property_account_expense_id": line['glCode']
+                    })
+
+                    temp_product = created_product['id']
+
+                    warn_str = "Message " + str(warn_cnt)
+                    error[warn_str] = "Product " + line['billingChargeCode'] + " has been created"
+                    warn_cnt += 1
+
+                #G/L Account
+                if line['glCode'] == "":
+                    error["Error"] = "Field glCode is blank"
+                    is_error = True
+                    break
+                
+                temp_account = self.getRecord(model="account.account", field="code", oms=line['glCode'])
+                if temp_account == -1:
+                    error["Error"] = "Account " + line['glCode'] + " does not exist"
+                    is_error = True
+                    break
+
+                #Tax
+                tx = float(line['billingTaxRate'])
+                tax = request.env['account.tax'].search([('amount', '=', tx),('type_tax_use', '=', 'sale')])
+                if tax['amount'] == tx:
+                    temp_tax.append(tax['id'])
+                else:
+                    error["Error"] = "Tax " + line['billingTaxRate'] + " does not exist"
+                    is_error = True
+                    break
+                    
+                #Check billingQty
+                if line['billingQty'] == "":
+                    error["Error"] = "Field billingQty is blank"
+                    is_error = True
+                    break
+                
+                #Check billingRate
+                if line['billingRate'] == "":
+                    error["Error"] = "Field billingRate is blank"
+                    is_error = True
+                    break
+                
+                if line['omsOrderDate'] == "":
+                    order_date = ""
+                else:
+                    try:
+                        order_date = datetime.datetime.strptime(line['omsOrderDate'], '%d/%m/%Y').date()
+                    except ValueError:
+                        error["Error"] = "Wrong date format on omsOrderDate"
+                        is_error = True
+                        break
+            
+                inv_line = {}
+                inv_line['x_line_number'] = line['invLineNo']
+                inv_line['product_id'] = temp_product
+                inv_line['account_id'] = temp_account
+                inv_line['quantity'] = line['billingQty']
+                inv_line['price_unit'] = line['billingRate']
+                inv_line['tax_ids'] = temp_tax
+                inv_line['x_remarks'] = line['billingRemarks']
+                inv_line['x_no_ot'] = line['omsReference']
+                inv_line['x_destination'] = line['uocCode']
+                inv_line['x_order_no'] = line['omsOrderNo']
+                inv_line['x_order_date'] = order_date
+                inv_line['x_driver_first_name'] = line['driverFirstName']
+                inv_line['x_vehicle_number'] = line['vehicleId']
+
+                inv_lines.append(inv_line)
+            
+            if is_error == True:
+                Response.status = "400"
+                break
+            
+            if rec["invoiceDate"] == "":
+                invoice_date = ""
+            else:
+                try:
+                    invoice_date = datetime.datetime.strptime(rec["invoiceDate"], '%d/%m/%Y').date()
+                except ValueError:
+                    error["Error"] = "Wrong date format on invoiceDate"
+                    is_error = True
+                    break
+            
+            if rec["dueDate"] == "":
+                due_date = ""
+            else:
+                try:
+                    due_date = datetime.datetime.strptime(rec["dueDate"], '%d/%m/%Y').date()
+                except ValueError:
+                    error["Error"] = "Wrong date format on dueDate"
+                    is_error = True
+                    break
+
+            #If previous record exist, delete it first before creating the new record
+            if inv['x_oms_invoice_no'] == rec['invoiceNo'] and inv['state'] == 'draft':
+                inv.unlink()
+            
+            result = request.env['account.move'].create({
+                "move_type": "out_invoice",
+                "journal_id": 1,
+                "x_oms_invoice_no": rec['invoiceNo'],
+                "partner_id": temp_cust,
+                "invoice_date": invoice_date,
+                "invoice_date_due": due_date,
+                "invoice_line_ids": inv_lines
+            })
+            created += 1
+
+            response_msg = "Invoice created successfully, ID: " + str(result['id'])
+
+        if is_error == True:
+            Response.status = "400"
+        else:
+            Response.status = "200"
+            
+        message = {
+            'response': response_msg, 
+            'message': error
+        }
         return message
