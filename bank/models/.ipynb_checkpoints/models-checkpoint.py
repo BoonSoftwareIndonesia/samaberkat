@@ -1,11 +1,13 @@
--*- coding: utf-8 -*-
+#  -*- coding: utf-8 -*-
 
 from odoo import models, fields, api
 
 
 class bank(models.Model):
-    _name = 'bank.bank'
-    _description = 'bank.bank'
+    _inherit = 'account.bank.statement'
+    
+#     _name = 'bank.bank'
+#     _description = 'bank.bank'
 
 #     name = fields.Char()
 #     value = fields.Integer()
