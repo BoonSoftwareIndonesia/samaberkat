@@ -29,10 +29,9 @@ class bank(models.Model):
     # User should not input negative quantity because we have seperated the screen for in and out
     @api.onchange('line_ids')
     def _onchange_amount(self):
-        if self.journal_id.type == 'bank':
-            for line in self.line_ids:
-                if line.amount < 0:
-                    raise UserError('Please input positive value')
+        for line in self.line_ids:
+            if line.amount < 0:
+                raise UserError('Please input positive value')
     
 #     _name = 'bank.bank'
 #     _description = 'bank.bank'
