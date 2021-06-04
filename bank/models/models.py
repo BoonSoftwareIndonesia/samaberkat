@@ -14,13 +14,12 @@ class bank(models.Model):
     # If the bank type is 'out', then the computed balance will be start balance - total entry
     @api.depends('line_ids', 'balance_start', 'line_ids.amount', 'balance_end_real', 'x_type')
     def _end_balance(self):
-        if self.x_type == 'out':
-            for statement in self:
+        for statement in self:
+            if statement.x_type == 'out':
                 statement.total_entry_encoding = sum([line.amount for line in statement.line_ids])
                 statement.balance_end = statement.balance_start - statement.total_entry_encoding
                 statement.difference = statement.balance_end_real - statement.balance_end
-        else:
-            for statement in self:
+            else:
                 statement.total_entry_encoding = sum([line.amount for line in statement.line_ids])
                 statement.balance_end = statement.balance_start + statement.total_entry_encoding
                 statement.difference = statement.balance_end_real - statement.balance_end
