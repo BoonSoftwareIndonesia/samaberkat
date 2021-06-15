@@ -2,6 +2,7 @@
 import json, datetime
 from odoo import http
 from odoo.http import request, Response
+from datetime import datetime
 
 
 class ApiSbt(http.Controller):
@@ -48,6 +49,16 @@ class ApiSbt(http.Controller):
         is_error = False
         response_msg = "Failed to create bill!"
         message = {}
+        
+        #Create log
+        api_log = request.env['api_sbt.api_sbt'].create({
+            'status': 'new',
+            'created_date': datetime.now(),
+            'incoming_msg': ap,
+            'message_type': 'ap'
+        })
+
+        api_log['status'] = 'process'
         
         for rec in ap:
             temp_state = 0
@@ -124,6 +135,7 @@ class ApiSbt(http.Controller):
             
             if is_error == True:
                 Response.status = "400"
+                api_log['status'] = 'error'
                 break
             
             #Bill Line
@@ -222,6 +234,7 @@ class ApiSbt(http.Controller):
             
             if is_error == True:
                 Response.status = "400"
+                api_log['status'] = 'error'
                 break
             
             if rec["omsPaymentDate"] == "":
@@ -285,13 +298,18 @@ class ApiSbt(http.Controller):
             
         if is_error == True:
             Response.status = "400"
+            api_log['status'] = 'error'
         else:
             Response.status = "200"
+            api_log['status'] = 'success'
         
         message = {
             'response': response_msg, 
             'message': error
         }
+        
+        api_log['response_msg'] = message
+        api_log['response_date'] = datetime.now()
         
         return message
 
