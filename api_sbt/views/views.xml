@@ -37,7 +37,13 @@
                             </group>
                         </group>
                         <group>
+                            <field name="incoming_txt"/>
+                            
+                            <field name="raw_dataname" invisible="1" />
+                            <field name="raw_data" filename="raw_dataname"/>
+                            <!--
                             <field name="incoming_msg" readonly="1" widget="html"/>
+                            -->
                             <field name="response_msg" readonly="1"/>
                         </group>
                     </sheet>
