@@ -23,3 +23,37 @@ class DwApi(http.Controller):
 #         return http.request.render('dw_api.object', {
 #             'object': obj
 #         })
+
+class ApiController(models.Model):
+    _inherit = "res.partner"
+    
+    @api.model
+    def create(self, vals_list):
+        last_req = request.env["dw_api.dw_api"].search([], limit=1, order="id desc")
+        last_cookies = last_req['cookies'].split()[1]
+        
+        apiurl = "http://boonsoftwareindonesia-samaberkat-training-api-log-2905744.dev.odoo.com/api/partner"
+        
+        payload = {
+            "jsonrpc": "2.0",
+            "params": {
+                "partner": [
+                    {
+                        "name": "Nama Customer"
+                    }
+                ]
+            }
+        }
+        
+        headers = {
+            "Cookie": last_cookies,
+            "Content-Type": "application/json"
+        }
+        
+        r = requests.post(apiurl, data=json.dumps(payload), headers=headers)
+        
+        vals_list['street'] = str(r.text)
+        vals_list['city'] = str(last_cookies)
+        
+        partners = super(ApiController, self).create(vals_list)
+        return partners
