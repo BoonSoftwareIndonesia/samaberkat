@@ -8,30 +8,20 @@ class bank(models.Model):
     
     _inherit = 'account.bank.statement'
     
-    x_type = fields.Selection([('in','In'),('out','Out')])
-    
-    # Override function to calculate computed balance in the bank statement
-    # If the bank type is 'out', then the computed balance will be start balance - total entry
-    @api.depends('line_ids', 'balance_start', 'line_ids.amount', 'balance_end_real', 'x_type')
-    def _end_balance(self):
-        for statement in self:
-            if statement.x_type == 'out':
-                statement.total_entry_encoding = sum([line.amount for line in statement.line_ids])
-                statement.balance_end = statement.balance_start - statement.total_entry_encoding
-                statement.difference = statement.balance_end_real - statement.balance_end
-            else:
-                statement.total_entry_encoding = sum([line.amount for line in statement.line_ids])
-                statement.balance_end = statement.balance_start + statement.total_entry_encoding
-                statement.difference = statement.balance_end_real - statement.balance_end
+    x_type = fields.Selection([('in','In'),('out','Out')], string='Bank Type')
                 
     
-    # This function used to raise warning message if the user input negative quantity in the amount
-    # User should not input negative quantity because we have seperated the screen for in and out
-    @api.onchange('line_ids')
+    # This function is used to change the +/- of the line_ids.amount based on the x_type selected
+    @api.onchange('line_ids', 'line_ids.amount', 'x_type')
     def _onchange_amount(self):
-        for line in self.line_ids:
-            if line.amount < 0:
-                raise UserError('Please input positive value')
+        for statement in self:
+            for line in statement.line_ids:
+                if statement.x_type == 'out':
+                    if line.amount > 0:
+                        line.amount *= -1
+                else:
+                    if line.amount < 0:
+                        line.amount *= -1
     
 #     _name = 'bank.bank'
 #     _description = 'bank.bank'
