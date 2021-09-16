@@ -56,14 +56,9 @@ class ApiSbt(http.Controller):
                 temp_term = 0
 
                 #Check omsPaymentNo
-                bill = request.env['account.move'].search([('x_payment_no', '=', rec['omsPaymentNo']),('move_type', '=', 'in_invoice')])
+                bill = request.env['account.move'].search([('x_payment_no', '=', rec['omsPaymentNo']),('move_type', '=', 'in_invoice'),('state', '!=', 'cancel')])
                 if bill['x_payment_no'] == rec['omsPaymentNo'] and bill['state'] == 'posted':
                     error["Error"] = "Document " + rec['omsPaymentNo'] + " has been posted"
-                    is_error = True
-                    break
-
-                if bill['x_payment_no'] == rec['omsPaymentNo'] and bill['state'] == 'cancel':
-                    error["Error"] = "Document " + rec['omsPaymentNo'] + " has been cancelled on Odoo"
                     is_error = True
                     break
 
@@ -321,14 +316,9 @@ class ApiSbt(http.Controller):
                 temp_country = 0
 
                 #Check invoiceNo
-                inv = request.env['account.move'].search([('x_oms_invoice_no', '=', rec['invoiceNo']),('move_type', '=', 'out_invoice')])
+                inv = request.env['account.move'].search([('x_oms_invoice_no', '=', rec['invoiceNo']),('move_type', '=', 'out_invoice'),('state', '!=', 'cancel')])
                 if inv['x_oms_invoice_no'] == rec['invoiceNo'] and inv['state'] == 'posted':
                     error["Error"] = "Document " + rec['invoiceNo'] + " has been posted"
-                    is_error = True
-                    break
-
-                if inv['x_oms_invoice_no'] == rec['invoiceNo'] and inv['state'] == 'cancel':
-                    error["Error"] = "Document " + rec['invoiceNo'] + " has been cancelled on Odoo"
                     is_error = True
                     break
 
