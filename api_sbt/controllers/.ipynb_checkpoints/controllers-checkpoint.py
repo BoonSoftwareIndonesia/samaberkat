@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-import json, datetime
+import json, datetime, base64
 from odoo import http
 from odoo.http import request, Response
+from datetime import datetime
 
 
 class ApiSbt(http.Controller):
@@ -132,6 +133,18 @@ class ApiSbt(http.Controller):
                     temp_product = 0
                     temp_account = 0
                     temp_tax = []
+                    
+                    #G/L Account
+                    if line['glCode'] == "":
+                        error["Error"] = "Field glCode is blank"
+                        is_error = True
+                        break
+
+                    temp_account = self.getRecord(model="account.account", field="code", oms=line['glCode'])
+                    if temp_account == -1:
+                        error["Error"] = "Account " + line['glCode'] + " does not exist"
+                        is_error = True
+                        break
 
                     #product
                     if line['paymentChargeCode'] == "":
@@ -150,8 +163,8 @@ class ApiSbt(http.Controller):
                         created_product = request.env['product.product'].create({
                             "default_code": line['paymentChargeCode'],
                             "name": line['paymentChargeCodeDesc'],
-                            "property_account_income_id": line['glCode'],
-                            "property_account_expense_id": line['glCode']
+                            "property_account_income_id": temp_account,
+                            "property_account_expense_id": temp_account
                         })
 
                         temp_product = created_product['id']
@@ -159,18 +172,6 @@ class ApiSbt(http.Controller):
                         warn_str = "Message " + str(warn_cnt)
                         error[warn_str] = "Product " + line['paymentChargeCode'] + " has been created"
                         warn_cnt += 1
-
-                    #G/L Account
-                    if line['glCode'] == "":
-                        error["Error"] = "Field glCode is blank"
-                        is_error = True
-                        break
-
-                    temp_account = self.getRecord(model="account.account", field="code", oms=line['glCode'])
-                    if temp_account == -1:
-                        error["Error"] = "Account " + line['glCode'] + " does not exist"
-                        is_error = True
-                        break
 
                     #Tax
                     tx = float(line['paymentTaxRate'])
@@ -390,6 +391,18 @@ class ApiSbt(http.Controller):
                     temp_product = 0
                     temp_account = 0
                     temp_tax = []
+                    
+                    #G/L Account
+                    if line['glCode'] == "":
+                        error["Error"] = "Field glCode is blank"
+                        is_error = True
+                        break
+
+                    temp_account = self.getRecord(model="account.account", field="code", oms=line['glCode'])
+                    if temp_account == -1:
+                        error["Error"] = "Account " + line['glCode'] + " does not exist"
+                        is_error = True
+                        break
 
                     #product
                     if line['billingChargeCode'] == "":
@@ -408,27 +421,15 @@ class ApiSbt(http.Controller):
                         created_product = request.env['product.product'].create({
                             "default_code": line['billingChargeCode'],
                             "name": line['billingChargeCodeDesc'],
-                            "property_account_income_id": line['glCode'],
-                            "property_account_expense_id": line['glCode']
+                            "property_account_income_id": temp_account,
+                            "property_account_expense_id": temp_account
                         })
 
                         temp_product = created_product['id']
 
                         warn_str = "Message " + str(warn_cnt)
                         error[warn_str] = "Product " + line['billingChargeCode'] + " has been created"
-                        warn_cnt += 1
-
-                    #G/L Account
-                    if line['glCode'] == "":
-                        error["Error"] = "Field glCode is blank"
-                        is_error = True
-                        break
-
-                    temp_account = self.getRecord(model="account.account", field="code", oms=line['glCode'])
-                    if temp_account == -1:
-                        error["Error"] = "Account " + line['glCode'] + " does not exist"
-                        is_error = True
-                        break
+                        warn_cnt += 1                    
 
                     #Tax
                     tx = float(line['billingTaxRate'])
