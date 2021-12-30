@@ -15,6 +15,7 @@ class api_sbt(models.Model):
     response_date = fields.Datetime(string="Response Date")
     message_type = fields.Selection([('ar','CRT_AR'),('ap','CRT_AP')])
     incoming_txt = fields.Many2one('ir.attachment', string="Incoming txt", readonly=True)
+    response_txt = fields.Many2one('ir.attachment', string="Response txt", readonly=True)
     raw_data = fields.Binary(string="Raw Data", attachment=True)
     raw_dataname = fields.Char(string="File Name")
 
