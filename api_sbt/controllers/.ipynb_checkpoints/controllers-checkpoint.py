@@ -50,6 +50,33 @@ class ApiSbt(http.Controller):
         response_msg = "Failed to create bill!"
         message = {}
         
+        #Create log
+        try:
+            api_log = request.env['api_sbt.api_sbt'].create({
+                'status': 'new',
+                'created_date': datetime.now(),
+                'incoming_msg': ap,
+                'message_type': 'ap'
+            })
+
+            api_log['status'] = 'process'
+        except:
+            error['Error'] = str(e)
+            is_error = True
+        
+        try:
+            api_log['incoming_txt'] = request.env['ir.attachment'].create({
+                'name': str(api_log['name']) + '_in.txt',
+                'type': 'binary',
+                'datas': base64.b64encode(bytes(str(ap), 'utf-8')),
+                'res_model': 'api_sbt.api_sbt',
+                'res_id': api_log['id'],
+                'mimetype': 'text/plain'
+            })
+        except Exception as e:
+            error['Error'] = str(e)
+            is_error = True
+        
         try:
             for rec in ap:
                 temp_state = 0
@@ -125,7 +152,7 @@ class ApiSbt(http.Controller):
                     temp_vendor = created_vendor['id']
 
                 if is_error == True:
-                    Response.status = "400"
+#                    Response.status = "400"
                     break
 
                 #Bill Line
@@ -199,7 +226,7 @@ class ApiSbt(http.Controller):
                         order_date = ""
                     else:
                         try:
-                            order_date = datetime.datetime.strptime(line['omsOrderDate'], '%d/%m/%Y').date()
+                            order_date = datetime.strptime(line['omsOrderDate'], '%d/%m/%Y').date()
                         except ValueError:
                             error["Error"] = "Wrong date format on omsOrderDate"
                             is_error = True
@@ -223,14 +250,14 @@ class ApiSbt(http.Controller):
                     bill_lines.append(bill_line)
 
                 if is_error == True:
-                    Response.status = "400"
+#                    Response.status = "400"
                     break
 
                 if rec["omsPaymentDate"] == "":
                     payment_date = ""
                 else:
                     try:
-                        payment_date = datetime.datetime.strptime(rec["omsPaymentDate"], '%d/%m/%Y').date()
+                        payment_date = datetime.strptime(rec["omsPaymentDate"], '%d/%m/%Y').date()
                     except ValueError:
                         error["Error"] = "Wrong date format on omsPaymentDate"
                         is_error = True
@@ -240,7 +267,7 @@ class ApiSbt(http.Controller):
                     invoice_date = ""
                 else:
                     try:
-                        invoice_date = datetime.datetime.strptime(rec["omsPayOpdate1"], '%d/%m/%Y').date()
+                        invoice_date = datetime.strptime(rec["omsPayOpdate1"], '%d/%m/%Y').date()
                     except ValueError:
                         error["Error"] = "Wrong date format on omsPayOpdate1"
                         is_error = True
@@ -250,7 +277,7 @@ class ApiSbt(http.Controller):
                     bill_date = ""
                 else:
                     try:
-                        bill_date = datetime.datetime.strptime(rec["omsPayOpdate2"], '%d/%m/%Y').date()
+                        bill_date = datetime.strptime(rec["omsPayOpdate2"], '%d/%m/%Y').date()
                     except ValueError:
                         error["Error"] = "Wrong date format on omsPayOpdate2"
                         is_error = True
@@ -260,7 +287,7 @@ class ApiSbt(http.Controller):
                     due_date = ""
                 else:
                     try:
-                        due_date = datetime.datetime.strptime(rec["dueDate"], '%d/%m/%Y').date()
+                        due_date = datetime.strptime(rec["dueDate"], '%d/%m/%Y').date()
                     except ValueError:
                         error["Error"] = "Wrong date format on dueDate"
                         is_error = True
@@ -290,14 +317,28 @@ class ApiSbt(http.Controller):
             is_error = True
 
         if is_error == True:
-            Response.status = "400"
+#            Response.status = "400"
+            api_log['status'] = 'error'
         else:
             Response.status = "200"
+            api_log['status'] = 'success'
         
         message = {
             'response': response_msg, 
             'message': error
         }
+        
+        api_log['response_msg'] = message
+        api_log['response_date'] = datetime.now()
+        
+        api_log['response_txt'] = request.env['ir.attachment'].create({
+            'name': str(api_log['name']) + '_out.txt',
+            'type': 'binary',
+            'datas': base64.b64encode(bytes(str(message), 'utf-8')),
+            'res_model': 'api_sbt.api_sbt',
+            'res_id': api_log['id'],
+            'mimetype': 'text/plain'
+        })
         
         return message
 
@@ -310,6 +351,33 @@ class ApiSbt(http.Controller):
         temp_cust = 0
         is_error = False
         response_msg = "Failed to create invoice!"
+        
+        #Create log
+        try:
+            api_log = request.env['api_sbt.api_sbt'].create({
+                'status': 'new',
+                'created_date': datetime.now(),
+                'incoming_msg': ar,
+                'message_type': 'ar'
+            })
+
+            api_log['status'] = 'process'
+        except:
+            error['Error'] = str(e)
+            is_error = True
+        
+        try:
+            api_log['incoming_txt'] = request.env['ir.attachment'].create({
+                'name': str(api_log['name']) + '_in.txt',
+                'type': 'binary',
+                'datas': base64.b64encode(bytes(str(ar), 'utf-8')),
+                'res_model': 'api_sbt.api_sbt',
+                'res_id': api_log['id'],
+                'mimetype': 'text/plain'
+            })
+        except Exception as e:
+            error['Error'] = str(e)
+            is_error = True
         
         try:
             for rec in ar:
@@ -457,7 +525,7 @@ class ApiSbt(http.Controller):
                         order_date = ""
                     else:
                         try:
-                            order_date = datetime.datetime.strptime(line['omsOrderDate'], '%d/%m/%Y').date()
+                            order_date = datetime.strptime(line['omsOrderDate'], '%d/%m/%Y').date()
                         except ValueError:
                             error["Error"] = "Wrong date format on omsOrderDate"
                             is_error = True
@@ -488,7 +556,7 @@ class ApiSbt(http.Controller):
                     invoice_date = ""
                 else:
                     try:
-                        invoice_date = datetime.datetime.strptime(rec["invoiceDate"], '%d/%m/%Y').date()
+                        invoice_date = datetime.strptime(rec["invoiceDate"], '%d/%m/%Y').date()
                     except ValueError:
                         error["Error"] = "Wrong date format on invoiceDate"
                         is_error = True
@@ -498,7 +566,7 @@ class ApiSbt(http.Controller):
                     due_date = ""
                 else:
                     try:
-                        due_date = datetime.datetime.strptime(rec["dueDate"], '%d/%m/%Y').date()
+                        due_date = datetime.strptime(rec["dueDate"], '%d/%m/%Y').date()
                     except ValueError:
                         error["Error"] = "Wrong date format on dueDate"
                         is_error = True
@@ -526,12 +594,27 @@ class ApiSbt(http.Controller):
             is_error = True
 
         if is_error == True:
-            Response.status = "400"
+#            Response.status = "400"
+            api_log['status'] = 'error'
         else:
             Response.status = "200"
+            api_log['status'] = 'success'
             
         message = {
             'response': response_msg, 
             'message': error
         }
+        
+        api_log['response_msg'] = message
+        api_log['response_date'] = datetime.now()
+        
+        api_log['response_txt'] = request.env['ir.attachment'].create({
+            'name': str(api_log['name']) + '_out.txt',
+            'type': 'binary',
+            'datas': base64.b64encode(bytes(str(message), 'utf-8')),
+            'res_model': 'api_sbt.api_sbt',
+            'res_id': api_log['id'],
+            'mimetype': 'text/plain'
+        })
+        
         return message
