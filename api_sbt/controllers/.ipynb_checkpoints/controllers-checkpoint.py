@@ -36,7 +36,7 @@ class ApiSbt(http.Controller):
             request.session.authenticate(db, login, password)
             return request.env['ir.http'].session_info()
         except:
-            Response.status = "401"
+#            Response.status = "401"
             return {"Error": "Failed to authenticate user"}
 
     @http.route('/api/createap', type='json', auth='user', methods=['POST'])
@@ -452,7 +452,7 @@ class ApiSbt(http.Controller):
                     temp_cust = created_cust['id']
 
                 if is_error == True:
-                    Response.status = "400"
+#                    Response.status = "400"
                     break
 
                 for line in rec['arLine']:
@@ -549,7 +549,7 @@ class ApiSbt(http.Controller):
                     inv_lines.append(inv_line)
 
                 if is_error == True:
-                    Response.status = "400"
+#                    Response.status = "400"
                     break
 
                 if rec["invoiceDate"] == "":
