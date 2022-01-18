@@ -36,7 +36,7 @@ class ApiSbt(http.Controller):
             request.session.authenticate(db, login, password)
             return request.env['ir.http'].session_info()
         except:
-            Response.status = "401"
+#            Response.status = "401"
             return {"Error": "Failed to authenticate user"}
 
     @http.route('/api/createap', type='json', auth='user', methods=['POST'])
