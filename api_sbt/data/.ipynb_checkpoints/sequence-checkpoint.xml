@@ -7,7 +7,7 @@
             <field name="name">API Sequence</field>
             <field name="code">api.seq</field>
             <field name="prefix">API</field>
-            <field name="padding">5</field>
+            <field name="padding">8</field>
             <field name="company_id" eval="False"/>
         </record>
 
