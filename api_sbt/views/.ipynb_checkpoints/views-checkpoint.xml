@@ -5,7 +5,7 @@
             <field name="name">api_sbt.api_sbt.tree</field>
             <field name="model">api_sbt.api_sbt</field>
             <field name="arch" type="xml">
-                <tree create="false" edit="false" delete="true">
+                <tree create="false" edit="false" delete="false">
                     <field name="name" modifiers="{'readonly':true}"/>
                     <field name="message_type" modifiers="{'readonly':true}"/>
                     <field name="status" modifiers="{'readonly':true}"/>
