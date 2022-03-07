@@ -129,136 +129,74 @@ class ApiSbtInv(http.Controller):
                         is_error = True
                         break
 
-                    #State
-                    oms_state = str(rec['subconStateName']).title()
-                    temp_state = self.getRecord(model="res.country.state", field="name", oms=oms_state)
-                    if temp_state == -1:
-                        error["Error"] = "State " + rec['subconStateName'] + " does not exist"
-                        is_error = True
-                        break
-
-                    #Country
-                    oms_country = str(rec['subconCountry']).title()
-                    temp_country = self.getRecord(model="res.country", field="name", oms=oms_country)
-                    if temp_country == -1:
-                        error["Error"] = "Country " + rec['subconCountry'] + " does not exist"
-                        is_error = True
-                        break
-
-                    #Payment Term
-                    temp_term = self.getRecord(model="account.payment.term", field="x_studio_oms_term_code", oms=rec['subconPaymentTerm'])
-                    if temp_term == -1:
-                        error["Error"] = "Payment Term  " + rec['subconPaymentTerm'] + " does not exist"
-                        is_error = True
-                        break
-
-                    created_vendor = request.env['res.partner'].create({
-                        "x_studio_subcon_code": rec['subconCode'],
-                        "name": rec['subconName'],
-                        "street": rec['subconAddress'],
-                        "city": rec['subconCity'],
-                        "state_id": temp_state,
-                        "zip": rec['subconZipCode'],
-                        "country_id": temp_country,
-                        "mobile": rec['subconMobileNo'],
-                        "email": rec['subconEmail'],
-                        "property_supplier_payment_term_id": temp_term,
-                        "is_company": 'TRUE',
-                        "supplier_rank": 1,
-                        "property_account_receivable_id": 558,
-                        "property_account_payable_id": 606,
-                        "x_studio_account_number": rec['subconRemarks']
-                    })
-
-                    warn_str = "Message " + str(warn_cnt)
-                    error[warn_str] = "Vendor " + rec['subconCode'] + " has been created"
-                    warn_cnt += 1
-
-                    temp_vendor = created_vendor['id']
-
-                if is_error == True:
-#                    Response.status = "400"
-                    break
-
-                #Bill Line
-                for line in rec['apLine']:
+                #Receipt Line
+                for line in rec['details']:
                     temp_product = 0
-                    temp_account = 0
-                    temp_tax = []
                     
-                    #G/L Account
-                    if line['glCode'] == "":
-                        error["Error"] = "Field glCode is blank"
+                    #ownerReference
+                    if line['ownerReference'] == "":
+                        error["Error"] = "Field ownerReference is blank"
                         is_error = True
                         break
-
-                    temp_account = self.getRecord(model="account.account", field="code", oms=line['glCode'])
-                    if temp_account == -1:
-                        error["Error"] = "Account " + line['glCode'] + " does not exist"
+                        
+                    #inwardLineOptChar1
+                    if line['inwardLineOptChar1'] == "":
+                        error["Error"] = "Field inwardLineOptChar1 is blank"
                         is_error = True
                         break
 
                     #product
-                    if line['paymentChargeCode'] == "":
-                        error["Error"] = "Field paymentChargeCode is blank"
+                    if line['product'] == "":
+                        error["Error"] = "Field product is blank"
                         is_error = True
                         break
 
-                    temp_product = self.getRecord(model="product.product", field="default_code", oms=line['paymentChargeCode'])
+                    temp_product = self.getRecord(model="product.product", field="default_code", wms=line['product'])
                     if temp_product == -1:
-                        #Check paymentChargeCodeDesc
-                        if line['paymentChargeCodeDesc'] == "":
-                            error["Error"] = "Field paymentChargeCodeDesc is blank"
-                            is_error = True
-                            break
 
                         created_product = request.env['product.product'].create({
-                            "default_code": line['paymentChargeCode'],
-                            "name": line['paymentChargeCodeDesc'],
-                            "property_account_income_id": temp_account,
-                            "property_account_expense_id": temp_account
+                            "default_code": line['product'],
+                            "name": line['product']
                         })
 
                         temp_product = created_product['id']
 
                         warn_str = "Message " + str(warn_cnt)
-                        error[warn_str] = "Product " + line['paymentChargeCode'] + " has been created"
+                        error[warn_str] = "Product " + line['product'] + " has been created"
                         warn_cnt += 1
 
-                    #Tax
-                    tx = float(line['paymentTaxRate'])
-                    tax = request.env['account.tax'].search([('amount', '=', tx),('type_tax_use', '=', 'purchase')])
-                    if tax['amount'] == tx:
-                        temp_tax.append(tax['id'])
-                    else:
-                        error["Error"] = "Tax " + line['paymentTaxRate'] + " does not exist"
+                    #Check quantityReceived
+                    if line['quantityReceived'] == "":
+                        error["Error"] = "Field quantityReceived is blank"
                         is_error = True
                         break
 
-                    #Check paymentQty
-                    if line['paymentQty'] == "":
-                        error["Error"] = "Field paymentQty is blank"
-                        is_error = True
-                        break
-
-                    #Check paymentRate
-                    if line['paymentRate'] == "":
-                        error["Error"] = "Field paymentRate is blank"
-                        is_error = True
-                        break
-
-                    if line['omsOrderDate'] == "":
+                    #Check expiryDate
+                    if line['expiryDate'] == "":
                         order_date = ""
                     else:
                         try:
-                            order_date = datetime.strptime(line['omsOrderDate'], '%d/%m/%Y').date()
+                            order_date = datetime.strptime(line['expiryDate'], '%d/%m/%Y').date()
                         except ValueError:
-                            error["Error"] = "Wrong date format on omsOrderDate"
+                            error["Error"] = "Wrong date format on expiryDate"
                             is_error = True
                             break
+                    
+                    #Check stockStatusCode
+                    if line['stockStatusCode'] == "":
+                        error["Error"] = "Field stockStatusCode is blank"
+                        is_error = True
+                        break
+                        
+                    #Check lotNo
+                    if line['lotNo'] == "":
+                        error["Error"] = "Field lotNo is blank"
+                        is_error = True
+                        break
+                            
 
                     bill_line = {}
-                    bill_line['x_line_number'] = line['payLineNo']
+                    bill_line['x_line_number'] = line['ownerReference']
                     bill_line['product_id'] = temp_product
                     bill_line['account_id'] = temp_account
                     bill_line['quantity'] = line['paymentQty']

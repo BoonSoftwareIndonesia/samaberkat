@@ -129,62 +129,21 @@ class ApiSbtInv(http.Controller):
                         is_error = True
                         break
 
-                    #State
-                    oms_state = str(rec['subconStateName']).title()
-                    temp_state = self.getRecord(model="res.country.state", field="name", oms=oms_state)
-                    if temp_state == -1:
-                        error["Error"] = "State " + rec['subconStateName'] + " does not exist"
-                        is_error = True
-                        break
-
-                    #Country
-                    oms_country = str(rec['subconCountry']).title()
-                    temp_country = self.getRecord(model="res.country", field="name", oms=oms_country)
-                    if temp_country == -1:
-                        error["Error"] = "Country " + rec['subconCountry'] + " does not exist"
-                        is_error = True
-                        break
-
-                    #Payment Term
-                    temp_term = self.getRecord(model="account.payment.term", field="x_studio_oms_term_code", oms=rec['subconPaymentTerm'])
-                    if temp_term == -1:
-                        error["Error"] = "Payment Term  " + rec['subconPaymentTerm'] + " does not exist"
-                        is_error = True
-                        break
-
-                    created_vendor = request.env['res.partner'].create({
-                        "x_studio_subcon_code": rec['subconCode'],
-                        "name": rec['subconName'],
-                        "street": rec['subconAddress'],
-                        "city": rec['subconCity'],
-                        "state_id": temp_state,
-                        "zip": rec['subconZipCode'],
-                        "country_id": temp_country,
-                        "mobile": rec['subconMobileNo'],
-                        "email": rec['subconEmail'],
-                        "property_supplier_payment_term_id": temp_term,
-                        "is_company": 'TRUE',
-                        "supplier_rank": 1,
-                        "property_account_receivable_id": 558,
-                        "property_account_payable_id": 606,
-                        "x_studio_account_number": rec['subconRemarks']
-                    })
-
-                    warn_str = "Message " + str(warn_cnt)
-                    error[warn_str] = "Vendor " + rec['subconCode'] + " has been created"
-                    warn_cnt += 1
-
-                    temp_vendor = created_vendor['id']
-
-                if is_error == True:
-#                    Response.status = "400"
-                    break
-
-                #Bill Line
-                for line in rec['apLine']:
+                #Receipt Line
+                for line in rec['details']:
                     temp_product = 0
-                    temp_account = 0
-                    temp_tax = []
+                    
+                    #ownerReference
+                    if line['ownerReference'] == "":
+                        error["Error"] = "Field ownerReference is blank"
+                        is_error = True
+                        break
+                        
+                    #inwardLineOptChar1
+                    if line['inwardLineOptChar1'] == "":
+                        error["Error"] = "Field inwardLineOptChar1 is blank"
+                        is_error = True
+                        break
                     
                     #G/L Account
                     if line['glCode'] == "":
