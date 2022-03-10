@@ -83,7 +83,7 @@ class ApiController(models.Model):
                     "sender": "" if record['x_studio_sender'] == False else record['x_studio_sender'],
                     "documentTransCode": "" if record['x_studio_document_trans_code'] == False else record['x_studio_document_trans_code'],
                     "ownerCode": "" if record['x_studio_owner'] == False else record['x_studio_owner'],
-                    "warehouseCode": "AVI",
+                    "warehouseCode": "" if record['picking_type_id']['warehouse_id']['code'] == False else record['picking_type_id']['warehouse_id']['code'],
                     "poDate": "" if record['date_approve'] == False else datetime.strftime(record['date_approve'], '%d/%m/%Y'),
                     "expectedArrivalDate": "" if record['date_planned'] == False else datetime.strftime(record['date_planned'], '%d/%m/%Y'),
                     "otherReferences": "" if record['x_studio_other_reference'] == False else record['x_studio_other_reference'],
@@ -117,12 +117,12 @@ class ApiController2(models.Model):
             so_line = {
                 "soLineOptChar1": line['x_studio_line_no'],
                 "soLineOptChar2": "" if line['x_studio_opt_char_2'] == False else line['x_studio_opt_char_2'],
-                "product": record['product_id']['default_code'],
+                "product": line['product_id']['default_code'],
                 #"productDesc": record['product_id']['name'],
-                "quantityOrdered": str(line['product_uom_qty']),
+                "quantityOrder": str(int(line['product_uom_qty'])),
                 "uomCode": line['product_uom']['name'],
-                "lotNo": "",
-                "filterTransactionCode",
+                "lotNo": "LOT",
+                "filterTransactionCode": "NM",
             }
             line_no += 1
             
@@ -130,33 +130,34 @@ class ApiController2(models.Model):
         
         
         payload = {
-   "accessToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJpZCIsImlhdCI6MTYxMTYzNzI3NCwic3ViIjoiaWQiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0IiwiYXVkIjoib2N0cyIsImV4cCI6MTYxMTcyMzY3NH0.bB2S1bNFxf_D0s8Fp2BGTXNc9CRNjEiRqyWFBNDzZ4c",
-   "order":[
-      {
-         "customerPO":"" if record['x_studio_customer_po'] == False else record['x_studio_customer_po'],
-         "reference":"" if record['name'] == False else record['name'],
-         "customerCode":"" if record['partner_id']["x_studio_internal_id"] == False else record['partner_id']["x_studio_internal_id"],
-         "soHeaderOptChar3":"",
-         "documentTransCode":"" if record['x_studio_document_trans_code'] == False else record['x_studio_document_trans_code'],
-         "orderDate":"" if record['date_order'] == False else record['date_order'],
-         "requestedDeliveryDate":"" if record['x_studio_request_delivery_date'] == False else record['x_studio_request_delivery_date'],
-         "ownerCode":"" if record['x_studio_owner_code'] == False else record['x_studio_owner_code'],
-         "warehouseCode":"AVI",
-         "shipNo":"" if record['partner_shipping_id']["x_studio_internal_id"] == False else record['partner_shipping_id']["x_studio_internal_id"],
-         "shipAddress1":"" if record['partner_shipping_id']["street"] == False else record['partner_shipping_id']["street"],
-         "shipCity":"" if record['partner_shipping_id']["city"] == False else record['partner_id']["x_studio_internal_id"],
-         "shipZipCode":"" if record['partner_shipping_id']["zip"] == False else record['partner_shipping_id']["zip"],
-         "shipCountry":"" if record['partner_shipping_id']["country_id"] == False else record['partner_shipping_id']["country_id"],
-         "shipZone":"NA",
-         "shipRoute":"NA",
-         "shipArea":"SHIP",
-         "remark2":"" if record['x_studio_remark_1'] == False else record['x_studio_remark_1'],
-         "remark1":"" if record['x_studio_remark_2'] == False else record['x_studio_remark_2'],
-         "allocatequantityOrder":"TRUE",
-         "shipInFull":"FALSE",
-      }
-   ]
-}
+            "accessToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJpZCIsImlhdCI6MTYxMTYzNzI3NCwic3ViIjoiaWQiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0IiwiYXVkIjoib2N0cyIsImV4cCI6MTYxMTcyMzY3NH0.bB2S1bNFxf_D0s8Fp2BGTXNc9CRNjEiRqyWFBNDzZ4c",
+            "order":[
+                {
+                    "customerPO":"" if record['x_studio_customer_po'] == False else record['x_studio_customer_po'],
+                    "reference":"" if record['name'] == False else record['name'],
+                    "customerCode":"" if record['partner_id']["x_studio_internal_id"] == False else record['partner_id']["x_studio_internal_id"],
+                    "soHeaderOptChar3":"",
+                    "documentTransCode":"" if record['x_studio_document_trans_code'] == False else record['x_studio_document_trans_code'],
+                    "orderDate":"" if record['date_order'] == False else datetime.strftime(record['date_order'], '%d/%m/%Y'),
+                    "requestedDeliveryDate":"" if record['x_studio_request_delivery_date'] == False else datetime.strftime(record['x_studio_request_delivery_date'], '%d/%m/%Y'),
+                    "ownerCode":"" if record['x_studio_owner_code'] == False else record['x_studio_owner_code'],
+                    "warehouseCode": "" if record['warehouse_id']['code'] == False else record['warehouse_id']['code'],
+                    "shipNo":"" if record['partner_shipping_id']["x_studio_internal_id"] == False else record['partner_shipping_id']["x_studio_internal_id"],
+                    "shipAddress1":"" if record['partner_shipping_id']["street"] == False else record['partner_shipping_id']["street"],
+                    "shipCity":"" if record['partner_shipping_id']["city"] == False else record['partner_id']["x_studio_internal_id"],
+                    "shipZipCode":"" if record['partner_shipping_id']["zip"] == False else record['partner_shipping_id']["zip"],
+                    "shipCountry":"" if record['partner_shipping_id']["country_id"]["name"] == False else record['partner_shipping_id']["country_id"]["name"],
+                    "shipZone":"NA",
+                    "shipRoute":"NA",
+                    "shipArea":"SHIP",
+                    "remark2":"" if record['x_studio_remark_1'] == False else record['x_studio_remark_1'],
+                    "remark1":"" if record['x_studio_remark_2'] == False else record['x_studio_remark_2'],
+                    "allocatequantityOrder":"TRUE",
+                    "shipInFull":"FALSE",
+                    "orderLine": so_lines
+                }
+            ]
+        }
         
         headers = {
             "Content-Type": "application/json",
@@ -166,7 +167,64 @@ class ApiController2(models.Model):
         
         r = requests.post(apiurl, data=json.dumps(payload), headers=headers)
         
-
+class ApiController3(models.Model):
+    _inherit = "stock.quant"
+    
+    def api_dw_inv(self):
+        apiurl = "https://cloud1.boonsoftware.com/trn_avi_api/inventorycompare"
+        
+        inv_lines = []
+        inv = request.env['stock.quant'].search([("location_id.usage","=","internal")])
+       
+        for i in inv:
+            inv_line = {
+                 "warehouseCode":"AVI",
+                 "ownerCode":"AVI",
+                 "product": i["product_id"]["default_code"],
+                 "lotNumber": i["lot_id"]["name"],
+                 "serialNumber":i["lot_id"]["name"],
+                 "expiryDate":i["lot_id"]["expiration_date"],
+                 "qtyOnHand":i["inventory_quantity"],
+                 "stockStatusCode":"NM"
+            }
+        
+            inv_lines.append(inv_line)
+            
+        inv_dm = request.env['stock.quant'].search([("location_id","=", 16)])
+       
+        for i in inv_dm:
+            inv_line = {
+                 "warehouseCode":"AVI",
+                 "ownerCode":"AVI",
+                 "product": i["product_id"]["default_code"],
+                 "lotNumber": i["lot_id"]["name"],
+                 "serialNumber":i["lot_id"]["name"],
+                 "expiryDate":i["lot_id"]["expiration_date"],
+                 "qtyOnHand":i["inventory_quantity"],
+                 "stockStatusCode":"DM"
+            }
+        
+            inv_lines.append(inv_line)
+       
+        
+        payload = {
+            "accessToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJpZCIsImlhdCI6MTYxMTYzNzI3NCwic3ViIjoiaWQiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0IiwiYXVkIjoib2N0cyIsImV4cCI6MTYxMTcyMzY3NH0.bB2S1bNFxf_D0s8Fp2BGTXNc9CRNjEiRqyWFBNDzZ4c",
+            "ivdList":[
+                { 
+                  "ownerCode":"AVI",
+                  "documentType":"Upload Inventory",
+                  "ivd": inv_lines
+                }
+            ]
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Connection": "keep-alive",
+            "Accept": "*/*"
+        }
+        
+        r = requests.post(apiurl, data=json.dumps(payload), headers=headers)
 #     name = fields.Char()
 #     value = fields.Integer()
 #     value2 = fields.Float(compute="_value_pc", store=True)
