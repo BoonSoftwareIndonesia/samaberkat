@@ -463,3 +463,182 @@ class ApiSbtInv(http.Controller):
     
 
 #Inventory Adjustment
+    @http.route('/api/downloadinventoryadjustment', type='json', auth='user', methods=['POST'])
+    def post_ia(self, ia):
+        created = 0
+        error = {}
+        warn_cnt = 1
+#        rcpt_lines = []
+        is_error = False
+        response_msg = "Failed to create Inventory Adjustment!"
+        message = {}
+        line_details = []
+        is_partial = False
+        
+#        try:
+        for rec in ia:
+            #check refrence
+            if rec['reference'] == "":
+                error["Error"] = "Field reference is blank"
+                is_error = True
+                break
+
+                #OrderDate
+            if rec["orderDate"] == "":
+                order_date = ""
+            else:
+                try:
+                    order_date = datetime.strptime(rec["orderDate"], '%d/%m/%Y').date()
+                except ValueError:
+                    error["Error"] = "Wrong date format on orderDate"
+                    is_error = True
+                    break
+                
+            #docTransCode
+            if rec['docTransCode'] == "":
+                error["Error"] = "Field docTransCode is blank"
+                is_error = True
+                break
+
+            #remark
+            if rec['remark'] == "":
+                error["Error"] = "Field remark is blank"
+                is_error = True
+                break
+                
+            #inventory adjustment Line
+            for line in rec['iadaLine']:
+                temp_product = 0
+
+                #product
+                if line['product'] == "":
+                    error["Error"] = "Field product is blank"
+                    is_error = True
+                    break
+                         
+                temp_product = self.getRecord(model="product.product", field="default_code", wms=line['product'])
+                if temp_product == -1:
+                    error["Error"] = "Field product not found"
+                    is_error = True
+                    break
+                    
+                 #confirmquantity
+                if line['confirmedQty'] == "":
+                    error["Error"] = "Field confirmedQty is blank"
+                    is_error = True
+                    break   
+                    
+                #lineRemark
+                if line['lineRemark'] == "":
+                    error["Error"] = "Field lineRemark is blank"
+                    is_error = True
+                    break
+                   
+                #lotnumber
+                if line['lotNo'] == "":
+                    error["Error"] = "Field lotNo is blank"
+                    is_error = True
+                    break   
+                    
+                #create lot on the fly if product does not exist
+                temp_lot = self.getRecord(model="stock.production.lot", field="name", wms=line['lotNo'])
+                if lot == -1:
+                    created_lot = request.env['stock.production.lot'].create({
+                        "product_id": temp_product,
+                        "name": det["lotNo"],
+                        "company_id": 1
+                    })
+
+                    temp_lot = created_lot ['id']
+
+                    warn_str = "Message " + str(warn_cnt)
+                    error[warn_str] = "LotNo" + line['lotNo'] + " has been created"
+                    warn_cnt += 1
+
+                    #Check stockStatusCode
+                    if det['stockStatusCode'] == "":
+                        error["Error"] = "Field stockStatusCode is blank"
+                        is_error = True
+                        break
+
+                    #Check expiryDate
+                    if det['expiryDate'] == "":
+                        expiry_date = ""
+                    else:
+                        try:
+                            expiry_date = datetime.strptime(det['expiryDate'], '%d/%m/%Y').date()
+                        except ValueError:
+                            error["Error"] = "Wrong date format on expiryDate"
+                            is_error = True
+                            break
+
+                    #Check confirmedQty qty
+                    location_id = 0
+                    location_dest_id = 0
+                    
+                    if det['confirmedQty'] <= 0:
+                        location_id = 8
+                        location_dest_id = 14
+                    else :
+                        location_id = 14
+                        location_dest_id = 8
+                        
+                    #Create Line Detail
+                    line_detail = request.env['stock.move.line'].create({
+                        "product_id": temp_product,
+                        "product_uom_id": 1,
+                        "location_id" : location_id,
+                        "location_dest_id": location_dest_id,
+                        "lot_id": temp_lot['id'],
+                        "expiration_date": expiry_date,
+                        "qty_done": det["quantityShipped"],
+                        "reference" : "Product Quantity Updated",
+                        "company_id": 1,
+                        "state": "done"
+                    })
+
+                    line_details.append(line_detail['id'])
+                    
+                
+                if is_error == True:
+                    break
+            
+            #adjustmentheader
+            adj_header = request.env['stock.move'].create({
+                "product_id": temp_product,
+                        "product_uom_id": 1,
+                        "location_id" : location_id,
+                        "location_dest_id": location_dest_id,
+                        "product_uom_qty": det["confirmedQty"],
+                        "reference" : "Product Quantity Updated",
+                        "company_id": 1,
+                        "state": "done"
+            })
+                    
+                    
+            if is_error == True:
+                break
+            
+            do_header['x_studio_dispatch_date'] = dispatch_date
+            do_header['x_studio_document_trans_code'] = rec["documentTransCode"]
+            
+            if is_partial == False:
+                do_header['state'] = 'done'
+
+            response_msg = "DO updated successfully"
+#        except Exception as e:
+#            error["Error"] = str(e)
+#            is_error = True
+
+        if is_error == True:
+#            Response.status = "400"
+            pass
+        else:
+            Response.status = "200"
+        
+        message = {
+            'response': response_msg, 
+            'message': error
+        }
+        
+        return message
