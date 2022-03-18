@@ -12,7 +12,7 @@ class bank(models.Model):
                 
     
     # This function is used to change the +/- of the line_ids.amount based on the x_type selected
-    @api.onchange('line_ids', 'line_ids.amount', 'x_type')
+    @api.onchange('line_ids', 'x_type')
     def _onchange_amount(self):
         for statement in self:
             for line in statement.line_ids:
