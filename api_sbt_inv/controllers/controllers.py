@@ -73,6 +73,33 @@ class ApiSbtInv(http.Controller):
         line_details = []
         is_partial = False
         
+        #Create log
+        try:
+            api_log = request.env['api_sbt_inv.api_sbt_inv'].create({
+                'status': 'new',
+                'created_date': datetime.now(),
+                'incoming_msg': rcpt,
+                'message_type': 'RCPT'
+            })
+
+            api_log['status'] = 'process'
+        except Exception as e:
+            error['Error'] = str(e)
+            is_error = True
+        
+        try:
+            api_log['incoming_txt'] = request.env['ir.attachment'].create({
+                'name': str(api_log['name']) + '_in.txt',
+                'type': 'binary',
+                'datas': base64.b64encode(bytes(str(rcpt), 'utf-8')),
+                'res_model': 'api_sbt_inv.api_sbt_inv',
+                'res_id': api_log['id'],
+                'mimetype': 'text/plain'
+            })
+        except Exception as e:
+            error['Error'] = str(e)
+            is_error = True
+            
 #        try:
         for rec in rcpt:
             #check poNo
@@ -249,14 +276,27 @@ class ApiSbtInv(http.Controller):
 
         if is_error == True:
 #            Response.status = "400"
-            pass
+            api_log['status'] = "error"
         else:
             Response.status = "200"
+            api_log['status'] = "success"
         
         message = {
             'response': response_msg, 
             'message': error
         }
+        
+        api_log['response_msg'] = message
+        api_log['response_date'] = datetime.now()
+        
+        api_log['response_txt'] = request.env['ir.attachment'].create({
+            'name': str(api_log['name']) + '_out.txt',
+            'type': 'binary',
+            'datas': base64.b64encode(bytes(str(message), 'utf-8')),
+            'res_model': 'api_sbt_inv.api_sbt_inv',
+            'res_id': api_log['id'],
+            'mimetype': 'text/plain'
+        })
         
         return message
     
@@ -274,6 +314,34 @@ class ApiSbtInv(http.Controller):
         message = {}
         line_details = []
         is_partial = False
+        
+        #Create log
+        try:
+            api_log = request.env['api_sbt_inv.api_sbt_inv'].create({
+                'status': 'new',
+                'created_date': datetime.now(),
+                'incoming_msg': do,
+                'message_type': 'DO'
+            })
+
+            api_log['status'] = 'process'
+        except Exception as e:
+            error['Error'] = str(e)
+            is_error = True
+        
+        try:
+            api_log['incoming_txt'] = request.env['ir.attachment'].create({
+                'name': str(api_log['name']) + '_in.txt',
+                'type': 'binary',
+                'datas': base64.b64encode(bytes(str(do), 'utf-8')),
+                'res_model': 'api_sbt_inv.api_sbt_inv',
+                'res_id': api_log['id'],
+                'mimetype': 'text/plain'
+            })
+        except Exception as e:
+            error['Error'] = str(e)
+            is_error = True
+
         
 #        try:
         for rec in do:

@@ -21,7 +21,7 @@
 
 from odoo import models, fields, api
 from odoo.http import request
-import json, datetime, requests
+import json, datetime, requests, base64, unicodedata
 from datetime import datetime
 
 
@@ -35,7 +35,7 @@ class api_sbt_inv(models.Model):
     status = fields.Selection([('new','New'),('process','Processing'),('success','Success'),('error','Error')])
     created_date = fields.Datetime(string="Created Date")
     response_date = fields.Datetime(string="Response Date")
-    message_type = fields.Selection([('RCPT','CRT_RCPT'),('DO','CRT_DO')])
+    message_type = fields.Selection([('RCPT','CRT_RCPT'),('DO','CRT_DO'),('PO','DW_PO'),('SO','DW_SO')])
     incoming_txt = fields.Many2one('ir.attachment', string="Incoming txt", readonly=True)
     response_txt = fields.Many2one('ir.attachment', string="Response txt", readonly=True)
     raw_data = fields.Binary(string="Raw Data", attachment=True)
@@ -56,6 +56,7 @@ class ApiController(models.Model):
         
         line_no = 1
         po_lines = []
+        error = {}
         
         for line in record['order_line']:
             line['x_studio_opt_char_1'] = str(line_no)
@@ -100,7 +101,65 @@ class ApiController(models.Model):
             "Accept": "*/*"
         }
         
+        #Create log
+        try:
+            api_log = request.env['api_sbt_inv.api_sbt_inv'].create({
+                'status': 'new',
+                'created_date': datetime.now(),
+                'incoming_msg': payload,
+                'message_type': 'PO'
+            })
+
+            api_log['status'] = 'process'
+        except Exception as e:
+            error['Error'] = str(e)
+            is_error = True
+        
+        try:
+            api_log['incoming_txt'] = request.env['ir.attachment'].create({
+                'name': str(api_log['name']) + '_in.txt',
+                'type': 'binary',
+                'datas': base64.b64encode(bytes(str(payload), 'utf-8')),
+                'res_model': 'api_sbt_inv.api_sbt_inv',
+                'res_id': api_log['id'],
+                'mimetype': 'text/plain'
+            })
+        except Exception as e:
+            error['Error'] = str(e)
+            is_error = True
+        
+#        try:
         r = requests.post(apiurl, data=json.dumps(payload), headers=headers)
+#        except Exception as e:
+#            is_error = True
+#            api_log['status'] = 'error'
+            
+#        wms_response = base64.b64encode(bytes(str(r.text), 'utf-8'))
+        
+        api_log['response_msg'] = base64.b64encode(bytes(str(r.text), 'utf-8'))
+        api_log['response_date'] = datetime.now()
+        
+        """if is_error == False:
+            api_log['status'] = 'success'
+        elif '"returnStatus":"-1"' in api_log['response_msg']:
+            api_log['status'] = 'error'
+        else:
+            api_log['status'] = 'success'"""
+        
+        if r.status_code == 200:
+            api_log['status'] = 'success'
+        else:
+            api_log['status'] = 'error'
+        
+        api_log['response_txt'] = request.env['ir.attachment'].create({
+            'name': str(api_log['name']) + '_out.txt',
+            'type': 'binary',
+            'datas': base64.b64encode(bytes(str(r.text), 'utf-8')),
+            'res_model': 'api_sbt_inv.api_sbt_inv',
+            'res_id': api_log['id'],
+            'mimetype': 'text/plain'
+        })
+        
 
 class ApiController2(models.Model):
     _inherit = "sale.order"
